@@ -6,7 +6,7 @@ $user_id = require_login();
 
 $notification_id = $_POST['notification_id']; // Get the notification ID from the POST request
 
-$stmt = $conn->prepare("UPDATE notifications SET is_read = TRUE WHERE notification_id = ?");
+$stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE notification_id = ?");
 $stmt->bind_param("i", $notification_id);
 $stmt->execute();
 
