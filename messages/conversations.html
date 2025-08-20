@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conversations</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="../list/index.php">📚 Book Exchange</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="nav" data-dyn-nav></div>
+    </div>
+  </nav>
+
+  <div class="container my-4">
+    <h3 class="mb-3">Conversations</h3>
+    <div id="alert" class="alert d-none" role="alert"></div>
+    <div id="list" class="list-group"></div>
+  </div>
+
+  <footer class="bg-dark text-white text-center py-3 mt-5">© 2025 Book Exchange</footer>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/nav.js"></script>
+  <script>
+    function banner(msg,type='info'){ const el=document.getElementById('alert'); el.className='alert alert-'+type; el.textContent=msg; }
+    function clearBanner(){ const el=document.getElementById('alert'); el.className='alert d-none'; el.textContent=''; }
+    function fetchConversations(){
+      const list = document.getElementById('list');
+      list.innerHTML = '<div class="text-muted">Loading…</div>';
+      fetch('list_conversations.php', { credentials:'same-origin' })
+        .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+        .then(rows=>{
+          list.innerHTML='';
+          if(!Array.isArray(rows) || rows.length===0){ list.innerHTML='<div class="text-muted">No conversations.</div>'; return; }
+          rows.forEach(row=>{
+            const a = document.createElement('a');
+            a.href = 'chat.html?exchange_request_id=' + encodeURIComponent(row.request_id);
+            a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-start';
+            a.innerHTML = '<div class="ms-2 me-auto">'
+              + '<div class="fw-bold">' + (row.listing_title||'') + ' <span class="badge bg-secondary ms-2">' + (row.status||'') + '</span></div>'
+              + (row.last_message ? row.last_message : '<span class="text-muted">No messages yet</span>')
+              + '</div>'
+              + (Number(row.unread_count)>0 ? '<span class="badge bg-primary rounded-pill">'+row.unread_count+'</span>' : '');
+            list.appendChild(a);
+          });
+        })
+        .catch(err=>banner('Failed to load: '+err.message,'danger'));
+    }
+    document.addEventListener('DOMContentLoaded', fetchConversations);
+  </script>
+</body>
+</html>

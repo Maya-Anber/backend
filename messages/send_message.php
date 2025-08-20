@@ -4,7 +4,7 @@ require_once __DIR__ . '/../_inc/db.php';
 require_once __DIR__ . '/../_inc/auth.php';
 require_once __DIR__ . '/../_inc/helpers.php';
 
-$user_id = require_login();
+$user_id = require_login(); 
 $input = get_post_json();
 $exchange_id = intval($input['exchange_request_id'] ?? 0);
 $content = sanitize_text($input['message'] ?? '');

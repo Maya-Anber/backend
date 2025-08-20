@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exchange Requests</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      /* small page-specific tweaks while keeping Bootstrap look */
+      .panel{border:1px solid #ddd;padding:12px;border-radius:6px;background:#fff}
+      .two-col{display:flex;gap:20px;flex-wrap:wrap}
+      table{width:100%;border-collapse:collapse;margin-top:8px}
+      th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:13px}
+      th{background:#f9f9f9;font-weight:600}
+      .loading{color:#666}
+      .error{color:#900}
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="../list/index.php">📚 Book Exchange</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav" data-dyn-nav></div>
+    </div>
+  </nav>
+
+    <div class="container my-5">
+      <h1 class="mb-2">Exchange requests</h1>
+      <p class="text-muted">Shows requests you received (as owner) and requests you created (as requester). You must be logged in for the lists to load.</p>
+
+      <div id="alert" class="alert d-none" role="alert"></div>
+
+      <div class="two-col mt-4">
+        <section class="panel" id="received-panel">
+          <h4>Requests you received</h4>
+          <div id="received" class="loading">Loading...</div>
+        </section>
+
+        <section class="panel" id="sent-panel">
+          <h4>Requests you created</h4>
+          <div id="sent" class="loading">Loading...</div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+        © 2025 Book Exchange. All rights reserved.
+    </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/nav.js"></script>
+
+    <script>
+    // Utilities
+    function showBanner(message, type='info'){
+      const el = document.getElementById('alert');
+      el.className = 'alert alert-' + type;
+      el.textContent = message;
+    }
+    function clearBanner(){
+      const el = document.getElementById('alert');
+      el.className = 'alert d-none';
+      el.textContent = '';
+    }
+
+    function actionsFor(role, status){
+      // status values: pending | approved | rejected | completed | cancelled
+      const s = (status||'').toLowerCase();
+      const map = {
+        owner: {
+          pending: [
+            { action:'approve', label:'Approve', cls:'btn btn-sm btn-success' },
+            { action:'reject', label:'Reject', cls:'btn btn-sm btn-outline-danger' }
+          ],
+          // backend allows rejecting even after approved
+          approved: [
+            { action:'complete', label:'Mark Complete', cls:'btn btn-sm btn-primary' },
+            { action:'reject', label:'Reject', cls:'btn btn-sm btn-outline-danger' }
+          ]
+        },
+        requester: {
+          pending: [ { action:'cancel', label:'Cancel', cls:'btn btn-sm btn-outline-secondary' } ],
+          approved: [ { action:'complete', label:'Mark Complete', cls:'btn btn-sm btn-primary' } ]
+        }
+      };
+      const list = (map[role] && map[role][s]) ? map[role][s] : [];
+      return list;
+    }
+
+    // Utility to create a table from the requests array
+  function buildTable(requests, role){
+      const tbl = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+  ['ID','Listing','Requester','Owner','Status','Message','Created','Actions'].forEach(h=>{
+        const th = document.createElement('th'); th.textContent = h; headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      tbl.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      requests.forEach(r=>{
+        const tr = document.createElement('tr');
+        const makeCell = v => { const td = document.createElement('td'); td.textContent = (v === null || v === undefined) ? '' : v; return td };
+  tr.appendChild(makeCell(r.request_id ?? r.id ?? ''));
+  tr.appendChild(makeCell(r.listing_title ?? r.title ?? ''));
+  tr.appendChild(makeCell(r.requester_username || r.requester_id || ''));
+  tr.appendChild(makeCell(r.owner_username || r.owner_id || ''));
+        tr.appendChild(makeCell(r.status ?? ''));
+        tr.appendChild(makeCell(r.message ?? r.request_message ?? ''));
+        tr.appendChild(makeCell(r.created_at ?? r.created ?? ''));
+        // Actions
+        const actionsTd = document.createElement('td');
+        const acts = actionsFor(role, r.status);
+        if (acts.length) {
+          acts.forEach(a => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = a.cls + ' me-1';
+            btn.textContent = a.label;
+            btn.setAttribute('data-action', a.action);
+            btn.setAttribute('data-id', r.request_id ?? r.id ?? '');
+            actionsTd.appendChild(btn);
+          });
+        }
+        // Offer rating when completed; show Rated if already rated
+        if ((r.status||'').toLowerCase() === 'completed') {
+          if (r.has_rated) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-sm btn-outline-secondary';
+            btn.textContent = 'Rated';
+            btn.disabled = true;
+            actionsTd.appendChild(btn);
+          } else {
+            const link = document.createElement('a');
+            link.href = `../ratings/rate.html?request_id=${encodeURIComponent(r.request_id ?? r.id ?? '')}`;
+            link.className = 'btn btn-sm btn-outline-primary';
+            link.textContent = 'Rate';
+            actionsTd.appendChild(link);
+          }
+        }
+        tr.appendChild(actionsTd);
+        tbody.appendChild(tr);
+      });
+      tbl.appendChild(tbody);
+      return tbl;
+    }
+
+    function showError(container, msg){
+      container.innerHTML = '';
+      const p = document.createElement('p'); p.className = 'error'; p.textContent = msg; container.appendChild(p);
+    }
+
+    function showNoData(container){
+      container.innerHTML = '<p class="small">No requests found.</p>';
+    }
+
+    function fetchRequests(role, containerId){
+      const container = document.getElementById(containerId.replace('#',''));
+      container.innerHTML = '<p class="loading">Loading...</p>';
+      // use same-origin to include session cookie
+      fetch('my_requests.php?role='+encodeURIComponent(role), { credentials: 'same-origin' })
+        .then(response => {
+          if (!response.ok) throw new Error('Server returned '+response.status);
+          return response.json();
+        })
+        .then(data => {
+          container.innerHTML = '';
+          if (!Array.isArray(data) || data.length === 0) return showNoData(container);
+          container.appendChild(buildTable(data, role));
+        })
+        .catch(err => {
+          showError(container, 'Failed to load: ' + err.message + '. You may need to be logged in.');
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      fetchRequests('owner', '#received');
+      fetchRequests('requester', '#sent');
+
+      // Event delegation for actions
+      document.body.addEventListener('click', function(e){
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.getAttribute('data-action');
+        const id = btn.getAttribute('data-id');
+        if (!id || !action) return;
+
+        btn.disabled = true;
+        const prevText = btn.textContent;
+        btn.textContent = prevText + '…';
+        clearBanner();
+
+        const payload = { request_id: Number(id), action };
+
+        fetch('update_request.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'same-origin'
+        })
+        .then(r => r.json().catch(() => ({ success:false, error:'Invalid JSON', status:r.status })))
+        .then(res => {
+          if (res && res.success) {
+            showBanner(res.message || 'Updated successfully', 'success');
+            // refresh lists
+            fetchRequests('owner', '#received');
+            fetchRequests('requester', '#sent');
+          } else {
+            showBanner((res && (res.error||res.message)) || 'Action failed', 'danger');
+          }
+        })
+        .catch(err => {
+          showBanner('Request failed: ' + err.message, 'danger');
+        })
+        .finally(() => {
+          btn.disabled = false;
+          btn.textContent = prevText;
+        });
+      });
+    });
+  </script>
+</body>
+</html>

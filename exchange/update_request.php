@@ -9,12 +9,12 @@ $input = get_post_json();
 $request_id = intval($input['request_id'] ?? 0);
 $action = strtolower(sanitize_text($input['action'] ?? '')); // approve|reject|cancel|complete
 
-if ($request_id <= 0 || !in_array($action, ['approve','c','cancel','complete'])) {
+if ($request_id <= 0 || !in_array($action, ['approve','reject','cancel','complete'])) {
     json_response(['success'=>false, 'error'=>'Invalid input'], 422);
 }
 
 // Load request
-$stmt = $conn->prepare("SELECT request_id, requester_id, owner_id, requested_listing_id, status FROM exchange_requests WHERE request_id=? LIMIT 1");
+$stmt = $conn->prepare("SELECT request_id, requester_id, owner_id, requested_listing_id, offered_listing_id, status FROM exchange_requests WHERE request_id=? LIMIT 1");
 $stmt->bind_param('i', $request_id);
 $stmt->execute();
 $res = $stmt->get_result();
@@ -27,7 +27,7 @@ $is_requester = intval($req['requester_id']) === $user_id;
 
 // State machine
 $current = $req['status'];
-if ($action === 'approve') {
+if ($action === 'approve') { 
     if (!$is_owner) json_response(['success'=>false,'error'=>'Only owner can approve'],403);
     if ($current !== 'pending') json_response(['success'=>false,'error'=>'Only pending requests can be approved'],409);
 
@@ -38,8 +38,9 @@ if ($action === 'approve') {
         $stmt->bind_param('i',  $request_id);
         $stmt->execute();
 
-        $stmt = $conn->prepare("UPDATE book_listings SET status='pending_exchange' WHERE listing_id=?");
-        $stmt->bind_param('i', $req['requested_listing_id']);
+    // Update listing availability to pending
+    $stmt = $conn->prepare("UPDATE book_listings SET availability_status='pending' WHERE listing_id=?");
+    $stmt->bind_param('i', $req['requested_listing_id']);
         $stmt->execute();
 
         $conn->commit();
@@ -77,14 +78,25 @@ if ($action === 'approve') {
         $stmt->bind_param('i', $request_id);
         $stmt->execute();
 
-        $stmt = $conn->prepare("UPDATE book_listings SET status='exchanged' WHERE listing_id=?");
-        $stmt->bind_param('i', $req['requested_listing_id']);
+    // Mark listing as exchanged
+    $stmt = $conn->prepare("UPDATE book_listings SET availability_status='exchanged' WHERE listing_id=?");
+    $stmt->bind_param('i', $req['requested_listing_id']);
         $stmt->execute();
 
+        // If there is an offered listing, mark it exchanged as well
+        if (!empty($req['offered_listing_id'])) {
+            $stmt = $conn->prepare("UPDATE book_listings SET availability_status='exchanged' WHERE listing_id=?");
+            $stmt->bind_param('i', $req['offered_listing_id']);
+            $stmt->execute();
+        }
 
-        $stmt = $conn->prepare("INSERT INTO exchange_requests_archive (request_id, requester_id, owner_id, requested_listing_id, offered_listing_id, status, request_message, request_date, response_date, archived_date) SELECT request_id, requester_id, owner_id, requested_listing_id, offered_listing_id, status, request_message, request_date, response_date, NOW() FROM exchange_requests WHERE request_id=?");
-        $stmt->bind_param('i', $request_id);
-        $stmt->execute();
+        // Archive only if archive table exists
+        $archiveCheck = $conn->query("SHOW TABLES LIKE 'exchange_requests_archive'");
+        if ($archiveCheck && $archiveCheck->num_rows > 0) {
+            $stmt = $conn->prepare("INSERT INTO exchange_requests_archive (request_id, requester_id, owner_id, requested_listing_id, offered_listing_id, status, request_message, request_date, response_date, archived_date) SELECT request_id, requester_id, owner_id, requested_listing_id, offered_listing_id, status, request_message, request_date, response_date, NOW() FROM exchange_requests WHERE request_id=?");
+            $stmt->bind_param('i', $request_id);
+            $stmt->execute();
+        }
 
         $conn->commit();
         json_response(['success'=>true,'message'=>'Exchange completed']);

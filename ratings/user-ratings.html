@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Ratings</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .star { color:#ffc107 }
+  </style>
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="same-origin">
+  <link rel="icon" href="../../favicon.ico">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="../list/index.php">📚 Book Exchange</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="nav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="../exchange/requests.html">Requests</a></li>
+          <li class="nav-item"><a class="nav-link" href="rate.html">Rate an exchange</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container my-4">
+    <h1 class="mb-3">User ratings</h1>
+    <div id="alert" class="alert d-none" role="alert"></div>
+    <form class="row g-2 align-items-end mb-3" id="filterForm">
+      <div class="col-auto">
+        <label for="user_id" class="form-label">User ID</label>
+        <input type="number" class="form-control" id="user_id" placeholder="Leave empty for me">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Load ratings</button>
+      </div>
+    </form>
+
+    <div id="summary" class="mb-3"></div>
+    <div id="reviews"></div>
+  </div>
+
+  <footer class="bg-dark text-white text-center py-3 mt-5">© 2025 Book Exchange</footer>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function banner(msg,type='info'){ const el=document.getElementById('alert'); el.className='alert alert-'+type; el.textContent=msg; }
+    function clearBanner(){ const el=document.getElementById('alert'); el.className='alert d-none'; el.textContent=''; }
+
+    function stars(n){ n = Math.max(0, Math.min(5, Number(n)||0)); return '★★★★★☆☆☆☆☆'.slice(5-n, 10-n).replace(/\*/g,'').replace(/./g, c => c==='★'?'<span class="star">★</span>':'<span class="text-muted">☆</span>'); }
+
+    function loadRatings(){
+      clearBanner();
+      const userId = document.getElementById('user_id').value.trim();
+      const url = 'get_user_ratings.php' + (userId ? ('?user_id='+encodeURIComponent(userId)) : '');
+      fetch(url, { credentials:'same-origin' })
+        .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+        .then(res=>{
+          if(!res || !res.success) { return banner((res && (res.message||res.error)) || 'Failed to load ratings', 'danger'); }
+          const { average, count, reviews } = res;
+          const sum = document.getElementById('summary');
+          sum.innerHTML = `<div class="card p-3"><div class="d-flex align-items-center gap-3">`
+                        + `<div style="font-size:26px">${average || 0} / 5</div>`
+                        + `<div>${stars(Math.round(average||0))}</div>`
+                        + `<div class="text-muted">${count} review(s)</div>`
+                        + `</div></div>`;
+          const list = document.getElementById('reviews');
+          list.innerHTML = '';
+          if(!Array.isArray(reviews) || reviews.length === 0){
+            list.innerHTML = '<p class="text-muted">No reviews yet.</p>';
+            return;
+          }
+          const ul = document.createElement('ul'); ul.className='list-group';
+          reviews.forEach(r => {
+            const li = document.createElement('li'); li.className='list-group-item';
+            li.innerHTML = `<div class="d-flex justify-content-between">`
+                         + `<div><strong>${r.rater_name || 'User '+r.rater_id}</strong> • <span class="text-muted small">${r.rating_date||''}</span></div>`
+                         + `<div>${stars(r.rating)}</div>`
+                         + `</div>`
+                         + (r.review_text ? `<div class="mt-2">${r.review_text}</div>` : '');
+            ul.appendChild(li);
+          });
+          list.appendChild(ul);
+        })
+        .catch(err=> banner('Failed to load: '+err.message, 'danger'));
+    }
+
+    document.getElementById('filterForm').addEventListener('submit', function(e){ e.preventDefault(); loadRatings(); });
+    // auto-load for current user
+    loadRatings();
+  </script>
+</body>
+</html>

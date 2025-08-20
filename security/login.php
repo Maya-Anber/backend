@@ -7,22 +7,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = $_POST["username"];
     $password = $_POST["password"];
 
-    // نجيب اليوزر من الداتابيز
-    $stmt = $conn->prepare("SELECT user_id, password_hash FROM users WHERE username = ?");
+    $stmt = $conn->prepare("SELECT user_id, username, password_hash FROM users WHERE username = ?");
     $stmt->bind_param("s", $username);
     $stmt->execute();
     $stmt->store_result();
 
     if ($stmt->num_rows > 0) {
-        $stmt->bind_result($user_id, $hashedPassword);
+        $stmt->bind_result($user_id, $username, $hashedPassword);
         $stmt->fetch();
 
         if (password_verify($password, $hashedPassword)) {
             $_SESSION["user_id"] = $user_id;
             $_SESSION["username"] = $username;
 
-            echo "✅ Login successful!<br>";
-            echo "Welcome, " . htmlspecialchars($username);
+            // Redirect to a protected page after login
+            header("Location:  /backend/list/index.php"); // Change to your desired page
+            exit();
         } else {
             echo "❌ Invalid password.";
         }
@@ -31,10 +31,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
-
-<!-- فورم تسجيل دخول -->
-<form method="post">
-    <input type="text" name="username" placeholder="Username" required><br>
-    <input type="password" name="password" placeholder="Password" required><br>
-    <button type="submit">Login</button>
-</form>

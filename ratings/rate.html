@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rate Exchange</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .star { color: #ffc107; }
+    .badge-status { text-transform: capitalize; }
+  </style>
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="same-origin">
+  <link rel="icon" href="../../favicon.ico">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="../list/index.php">📚 Book Exchange</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="nav" data-dyn-nav></div>
+    </div>
+  </nav>
+
+  <div class="container my-4">
+    <h1 class="mb-3">Rate this exchange <span id="statusBadge" class="badge bg-secondary badge-status d-none"></span></h1>
+    <div id="alert" class="alert d-none" role="alert"></div>
+
+    <div id="context" class="mb-4"></div>
+
+    <form id="rateForm" class="card p-3" style="max-width:640px">
+      <div class="mb-3">
+        <label for="rating" class="form-label">Rating</label>
+        <select id="rating" class="form-select" required>
+          <option value="">Choose…</option>
+          <option value="5">★★★★★ (Excellent)</option>
+          <option value="4">★★★★☆ (Good)</option>
+          <option value="3">★★★☆☆ (Okay)</option>
+          <option value="2">★★☆☆☆ (Poor)</option>
+          <option value="1">★☆☆☆☆ (Bad)</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="review" class="form-label">Review (optional)</label>
+        <textarea id="review" class="form-control" rows="4" placeholder="Share your experience (max 1000 chars)"></textarea>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Submit rating</button>
+        <a class="btn btn-outline-secondary" id="backLink" href="../exchange/requests.html">Back</a>
+      </div>
+      <div class="form-text mt-2">Only participants of a completed exchange can rate. You can rate only once per exchange.</div>
+    </form>
+  </div>
+
+  <footer class="bg-dark text-white text-center py-3 mt-5">© 2025 Book Exchange</footer>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/nav.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const requestId = Number(params.get('request_id')) || Number(params.get('exchange_request_id'));
+    const backLink = document.getElementById('backLink');
+    if (requestId) backLink.href = '../messages/chat.html?exchange_request_id=' + encodeURIComponent(requestId);
+
+    function banner(msg, type='info'){
+      const el = document.getElementById('alert');
+      el.className = 'alert alert-' + type;
+      el.textContent = msg;
+    }
+    function clearBanner(){ const el = document.getElementById('alert'); el.className='alert d-none'; el.textContent=''; }
+
+    function setStatusBadge(status){
+      if(!status) return;
+      const b = document.getElementById('statusBadge');
+      b.textContent = status;
+      b.classList.remove('d-none');
+      b.classList.toggle('bg-success', status.toLowerCase()==='completed');
+      b.classList.toggle('bg-secondary', status.toLowerCase()!=='completed');
+    }
+
+    // Try to show context about the request (title, status) by scanning my requests lists
+    function loadContext(){
+      if(!requestId) { banner('Missing request_id','danger'); return; }
+      const ctx = document.getElementById('context');
+      ctx.innerHTML = '<div class="text-muted">Loading exchange details…</div>';
+      const opts = { credentials:'same-origin' };
+      Promise.all([
+        fetch('../exchange/my_requests.php?role=owner', opts).then(r=>r.ok?r.json():[]).catch(()=>[]),
+        fetch('../exchange/my_requests.php?role=requester', opts).then(r=>r.ok?r.json():[]).catch(()=>[])
+      ]).then(([owner, requester])=>{
+        const all = ([]).concat(Array.isArray(owner)?owner:[], Array.isArray(requester)?requester:[]);
+        const row = all.find(x=> Number(x.request_id)===requestId);
+        if(!row){ ctx.innerHTML = '<div class="small text-muted">Exchange details unavailable. You can still submit a rating; if not permitted, the server will reject it.</div>'; return; }
+        const title = row.listing_title || 'Listing #' + row.requested_listing_id;
+        const status = row.status || '';
+        setStatusBadge(status);
+        const created = row.created_at || row.created || '';
+        ctx.innerHTML = `
+          <div class="card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="fw-semibold">${title}</div>
+                <div class="text-muted small">Request #${row.request_id} • ${created}</div>
+              </div>
+              <a href="../messages/chat.html?exchange_request_id=${encodeURIComponent(requestId)}" class="btn btn-sm btn-outline-primary">Open chat</a>
+            </div>
+          </div>`;
+        if ((status||'').toLowerCase() !== 'completed') {
+          banner('Only completed exchanges can be rated. Current status: ' + status, 'warning');
+        }
+      }).catch(()=>{
+        ctx.innerHTML = '';
+      });
+    }
+
+    document.getElementById('rateForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      clearBanner();
+      if(!requestId){ return banner('Missing request_id','danger'); }
+      const rating = Number(document.getElementById('rating').value);
+      const review = (document.getElementById('review').value || '').trim().slice(0, 1000);
+      if(!rating || rating < 1 || rating > 5) return banner('Please select a rating between 1 and 5.','warning');
+      const btn = this.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'Submitting…';
+      fetch('submit_rating.php', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ request_id: requestId, rating, review }),
+        credentials:'same-origin'
+      })
+      .then(r=>r.json().catch(()=>({success:false,message:'Invalid JSON', status:r.status})))
+      .then(res=>{
+        if(res && res.success){
+          banner('Thanks for your rating!','success');
+          btn.disabled = true; btn.textContent = 'Submitted';
+          document.getElementById('rating').disabled = true;
+          document.getElementById('review').disabled = true;
+        } else {
+          banner(res.message || res.error || 'Failed to submit rating','danger');
+        }
+      })
+      .catch(err=> banner('Request failed: ' + err.message, 'danger'))
+      .finally(()=>{ if(!btn.disabled){ btn.textContent = 'Submit rating'; } });
+    });
+
+    loadContext();
+  </script>
+</body>
+</html>

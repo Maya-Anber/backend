@@ -16,11 +16,10 @@ if (!$request_id || !$rating || !is_numeric($rating) || $rating < 1 || $rating >
     exit;
 }
 
-// Fetch exchange details
+// Fetch exchange details (use owner_id from exchange_requests to avoid mismatches)
 $stmt = $conn->prepare("
-    SELECT er.status, er.requester_id, bl.user_id AS owner_id
+    SELECT er.status, er.requester_id, er.owner_id
     FROM exchange_requests er
-    JOIN book_listings bl ON er.requested_listing_id = bl.listing_id
     WHERE er.request_id = ?
 ");
 $stmt->bind_param("i", $request_id);
