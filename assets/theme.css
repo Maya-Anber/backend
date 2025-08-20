@@ -1,0 +1,128 @@
+/*
+  Book Exchange Theme (Admin + Shared)
+  - Modern, clean, and accessible defaults
+*/
+
+:root {
+  /* Light theme palette */
+  --bg: #f7f8fb;           /* app background */
+  --bg-soft: #ffffff;      /* softer white */
+  --surface: #ffffff;      /* panels/cards */
+  --surface-2: #f9fafb;    /* inputs/alt rows */
+  --border: #e5e7eb;       /* subtle borders */
+  --text: #4965a1;         /* primary text */
+  --muted: #c3cde1;        /* secondary text */
+  --primary: #2563eb;      /* brand */
+  --primary-600: #1d4ed8;
+  --primary-700: #4d7a917c;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --shadow: 0 10px 24px rgba(2, 6, 23, .06), 0 4px 12px rgba(2, 6, 23, .04);
+}
+
+/* Base */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #fafbff, var(--bg));
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", sans-serif;
+  line-height: 1.5;
+}
+ a { color: var(--primary); text-decoration: none; }
+ a:hover { color: var(--primary-600); text-decoration: underline; }
+
+/* Layout */
+.wrap { padding: 24px; max-width: 1200px; margin: 0 auto; }
+.page-title { margin: 8px 0 16px; font-size: 28px; font-weight: 700; letter-spacing: .2px; }
+
+/* Admin Nav */
+.admin-nav {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.admin-nav .nav-inner {
+  display: flex; align-items: center; gap: 14px; padding: 12px 20px; max-width: 1200px; margin: 0 auto;
+}
+.admin-nav .brand { font-weight: 700; color: var(--text); margin-right: 4px; }
+.admin-nav a { color: var(--text); opacity: .9; padding: 8px 10px; border-radius: 8px; }
+.admin-nav a:hover { background: var(--surface-2); opacity: 1; }
+.spacer { flex: 1; }
+.admin-meta { color: var(--muted); font-size: 14px; }
+
+/* Cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 16px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.card strong { font-size: 28px; display:block; margin:6px 0 8px; color: var(--text); }
+.card a { color: var(--primary); font-weight: 600; }
+.card a:hover { color: var(--primary-600); }
+
+/* Tables */
+ table { width: 100%; border-collapse: collapse; background: transparent; }
+ thead th {
+  text-align: left; font-weight: 600; color: var(--muted); font-size: 14px;
+  padding: 12px; border-bottom: 1px solid var(--border);
+ }
+ tbody td { padding: 12px; border-bottom: 1px solid var(--border); }
+ tbody tr:hover { background: rgba(44, 62, 142, 0.586); }
+
+/* Forms */
+ input[type="text"], input[type="number"], input[type="email"], select, textarea {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none;
+ }
+ input::placeholder, textarea::placeholder { color: #9aa3b2; }
+ select { padding-right: 28px; }
+
+/* Buttons */
+ button, .btn {
+  background: var(--primary-700);
+  color: #fff;
+  border: 1px solid transparent;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+ }
+ button:hover, .btn:hover { background: var(--primary-600); }
+ .btn-outline {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+ }
+ .btn-outline:hover { background: var(--surface-2); }
+
+/* Badges */
+ .badge { padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; display: inline-block; }
+ .role-admin { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+ .role-user  { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+ .active     { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+ .inactive   { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+/* Footer (if used) */
+ footer { border-top: 1px solid var(--border); background: var(--bg-soft); color: var(--muted); }
+
+/* Utilities */
+ .mt-1{margin-top:4px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}
+ .mb-1{margin-bottom:4px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}
+
+/* Bootstrap navbar dark overrides to align with light theme */
+.navbar.bg-dark { background-color: #ffffff !important; border-bottom: 1px solid var(--border); }
+.navbar.navbar-dark .navbar-brand, .navbar.navbar-dark .nav-link { color: var(--text) !important; }
+.navbar-dark .navbar-nav .nav-link.active, .navbar-dark .nav-link.show { color: var(--primary) !important; }
+.navbar-dark .navbar-toggler { border-color: var(--border) !important; }
+.navbar-dark .navbar-toggler-icon { filter: invert(0.85); }

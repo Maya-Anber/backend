@@ -1,6 +1,4 @@
--- ================================================
--- Book Exchange Platform - Fixed Complete Essential Schema
--- ================================================
+
 
 DROP DATABASE IF EXISTS book_exchange;
 CREATE DATABASE book_exchange;
@@ -17,6 +15,7 @@ CREATE TABLE users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
+    role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP NULL,
     is_active BOOLEAN DEFAULT TRUE,
@@ -207,15 +206,34 @@ CREATE INDEX idx_settings_key ON system_settings(setting_key);
 -- ================================================
 
 -- Insert sample users with all required fields
-INSERT INTO users (username, email, password_hash, full_name, privacy_contact_info, email_verified, notification_preferences) VALUES
-('sarah_reader', 'sarah.johnson@email.com', '$2y$10$example_hash_sarah', 'Sarah Johnson', 'public', TRUE, '{"email": true, "in_app": true}'),
-('mike_books', 'mike.chen@email.com', '$2y$10$example_hash_mike', 'Mike Chen', 'private', TRUE, '{"email": true, "in_app": false}'),
-('emma_novels', 'emma.davis@email.com', '$2y$10$example_hash_emma', 'Emma Davis', 'public', TRUE, '{"email": false, "in_app": true}'),
-('alex_collector', 'alex.rodriguez@email.com', '$2y$10$example_hash_alex', 'Alex Rodriguez', 'private', TRUE, '{"email": true, "in_app": true}'),
-('jenny_literature', 'jenny.wilson@email.com', '$2y$10$example_hash_jenny', 'Jenny Wilson', 'public', TRUE, '{"email": true, "in_app": true}'),
-('omar_books', 'omar.hassan@email.com', '$2y$10$example_hash_omar', 'Omar Hassan', 'public', TRUE, '{"email": false, "in_app": false}'),
-('fatma_reader', 'fatma.ali@email.com', '$2y$10$example_hash_fatma', 'Fatma Ali', 'private', TRUE, '{"email": true, "in_app": true}'),
-('ahmed_novels', 'ahmed.mohamed@email.com', '$2y$10$example_hash_ahmed', 'Ahmed Mohamed', 'public', TRUE, '{"email": true, "in_app": true}');
+INSERT INTO users (username, email, password_hash, full_name, role, privacy_contact_info, email_verified, notification_preferences) VALUES
+('sarah_reader', 'sarah.johnson@email.com', '$2y$10$example_hash_sarah', 'Sarah Johnson', 'user', 'public', TRUE, '{"email": true, "in_app": true}'),
+('mike_books', 'mike.chen@email.com', '$2y$10$example_hash_mike', 'Mike Chen', 'user', 'private', TRUE, '{"email": true, "in_app": false}'),
+('emma_novels', 'emma.davis@email.com', '$2y$10$example_hash_emma', 'Emma Davis', 'user', 'public', TRUE, '{"email": false, "in_app": true}'),
+('alex_collector', 'alex.rodriguez@email.com', '$2y$10$example_hash_alex', 'Alex Rodriguez', 'user', 'private', TRUE, '{"email": true, "in_app": true}'),
+('jenny_literature', 'jenny.wilson@email.com', '$2y$10$example_hash_jenny', 'Jenny Wilson', 'user', 'public', TRUE, '{"email": true, "in_app": true}'),
+('omar_books', 'omar.hassan@email.com', '$2y$10$example_hash_omar', 'Omar Hassan', 'user', 'public', TRUE, '{"email": false, "in_app": false}'),
+('fatma_reader', 'fatma.ali@email.com', '$2y$10$example_hash_fatma', 'Fatma Ali', 'user', 'private', TRUE, '{"email": true, "in_app": true}'),
+('ahmed_novels', 'ahmed.mohamed@email.com', '$2y$10$example_hash_ahmed', 'Ahmed Mohamed', 'user', 'public', TRUE, '{"email": true, "in_app": true}');
+
+-- Add an admin user with a high user_id to avoid conflicting with sample user_id references
+-- Password is 'password'
+INSERT INTO users (user_id, username, email, password_hash, full_name, role, privacy_contact_info, email_verified, notification_preferences)
+VALUES (999, 'admin', 'admin@
+
+
+
+
+
+
+
+
+
+
+
+
+
+example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEaElw72Jec5n3kqS6T7O/8WlHKu', 'Site Administrator', 'admin', 'private', TRUE, '{"email": true, "in_app": true}');
 
 -- Insert sample books
 INSERT INTO books (title, author, isbn, genre, publication_year, description, cover_image) VALUES

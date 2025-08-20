@@ -1,60 +1,79 @@
 # Book Exchange (XAMPP PHP + MySQL)
 
-A simple book exchange platform featuring listings, exchange requests, real-time-ish messaging, and user ratings. Built for XAMPP on Windows; uses PHP sessions for auth and MySQL.
+A simple book exchange platform featuring listings, exchange requests, per-exchange messaging, and post-exchange user ratings. Built for XAMPP on Windows, uses PHP sessions and MySQL (mysqli).
 
 ## Quick start
 
-1. Import the schema:
-   - Open phpMyAdmin and run `backend/database_book.sql` (creates DB `book_exchange` and sample data).
-2. Configure DB connection:
-   - Edit `backend/_inc/config.php` with your DB host, user, password, name, and SQL port.
-3. Start XAMPP (Apache + MySQL) and navigate to:
-   - Home: `http://localhost/backend/list/index.php`
-4. Login/Register:
-   - Login: `http://localhost/backend/security/login.html`
-   - Register: `http://localhost/backend/security/register.html`
+1) Import the schema and sample data
+- Open phpMyAdmin and run `backend/database_book.sql` (creates DB `book_exchange`, tables, indexes, views, and sample data).
+
+2) Configure DB connection
+- Edit `backend/_inc/config.php` with your DB host, user, password, name, and SQL port. Note: This repo defaults to `SQL_PORT = 3309`. If your MySQL runs on 3306, change it here or update MySQL to listen on 3309.
+
+3) Start and open the app
+- Start Apache + MySQL in XAMPP.
+- Home: `http://localhost/backend/list/index.php`
+- Login: `http://localhost/backend/security/login.html`
+- Register: `http://localhost/backend/security/register.html`
+
+4) Try admin
+- A sample admin user is created by the SQL: username `admin`, password `password`.
+- Admin dashboard: `http://localhost/backend/admin/index.php` (after logging in as admin).
 
 ## Key features
 
-- Listings: add/view books; request exchanges
-- Exchange requests: owner can approve/reject; either party can complete
-- Messaging: conversation per exchange with unread counts
-- Ratings: participants rate each other after completion
-- Unified navigation: session-aware links across all pages
+- Listings: add/view books; filter by genre/author/availability
+- Exchange requests: owner can approve/reject; either party can mark complete
+- Messaging: conversation per exchange with unread counts and polling
+- Ratings: participants rate each other after completion; one rating per exchange per user
+- Session-aware navigation shared across all pages
 
-## Project structure (selected)
+## Architecture overview
 
-- `backend/_inc/` shared PHP includes: `db.php`, `auth.php`, `helpers.php`, `config.php`
-- `backend/list/` listing UI and actions: `index.php`, `add-book.html`, `book-details.php`, `request_exchange.html`
-- `backend/exchange/` requests UI/APIs: `requests.html`, `send_request.php`, `update_request.php`, `my_requests.php`
-- `backend/messages/` messaging UI/APIs: `conversations.html`, `chat.html`, `send_message.php`, `get_messages.php`, `list_conversations.php`, `mark_read.php`
-- `backend/ratings/` ratings UI/APIs: `rate.html`, `submit_rating.php`, `get_user_ratings.php`
-- `backend/security/` auth and profile: `login.html`, `register.html`, `logout.php`, `profile.php`, `session_info.php`
-- `backend/assets/` shared assets: `nav.js` (dynamic navbar)
+- PHP includes (`backend/_inc`):
+  - `config.php` (DB/env), `db.php` (mysqli connection), `auth.php` (login guard for APIs), `admin_auth.php` (admin guard + `esc()`), `helpers.php` (JSON responses, input parsing, sanitizers)
+- Auth & profile (`backend/security`): login, register, logout, profile, and lightweight `session_info.php` used by the navbar
+- Listings (`backend/list`): main browse page, add-book form and handler, book details, and exchange request launcher
+- Exchanges (`backend/exchange`): requests UI/API to list/update/create requests
+- Messages (`backend/messages`): conversations listing and chat UI; REST endpoints for list/get/send/mark read
+- Ratings (`backend/ratings`): rate completed exchanges and view your ratings summary
+- Admin (`backend/admin`): dashboard + CRUD-ish tables for users, books, listings, exchanges
+- Assets (`backend/assets`): `nav.js` (dynamic navbar), `theme.css` (shared/admin theme)
 
-## Navigation (dynamic)
+## Database model (summary)
 
-A shared JS (`backend/assets/nav.js`) renders nav links based on session (via `backend/security/session_info.php`).
+- `users` (username, email, password_hash, full_name, role user|admin, flags like is_active, last_login, JSON notification_preferences)
+- `books` (title, author, isbn unique, genre, year, description, cover_image)
+- `book_listings` (user_id, book_id, condition_rating, availability_status: available|pending|exchanged, listed_date, view_count, etc.)
+- `exchange_requests` (requester_id, owner_id, requested_listing_id, optional offered_listing_id, status lifecycle, message + timestamps)
+- `messages` (per-exchange chat: sender_id, receiver_id, content, sent_date, is_read)
+- `user_ratings` (rater_id, rated_user_id, exchange_request_id, numeric rating 1..5, review)
+- `notifications`, `user_favorites`, `system_settings`, `user_sessions` (available for extensions; minimal or no UI wiring yet)
 
-- Logged-in: Home, My Profile, Messages, Exchange Requests, Add Book, Logout
-- Guest: Home, Login, Register
+The SQL file adds indexes for search/performance and creates helpful views like `available_books_view`, `user_stats_view`, `platform_stats_view`, `popular_genres_view`.
 
-To use on a page, include a nav with `data-dyn-nav` and add the script:
+## User flows
 
-```html
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="../list/index.php">📚 Book Exchange</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="nav" data-dyn-nav></div>
-  </div>
-</nav>
-<script src="../assets/nav.js"></script>
-```
+1) Add books & list them
+- Authenticated users add books via `add-book.html` → `add_book.php` inserts into `books` then creates a `book_listings` row.
 
-## API overview
+2) Browse and request exchanges
+- `list/index.php` shows “My Books” (if logged in) and “Available Books”.
+- From details, a non-owner can open “Request Exchange” and send a request to the owner.
+
+3) Manage exchange lifecycle
+- Requests appear in `exchange/requests.html` under two panels: received (as owner) and sent (as requester), backed by `my_requests.php`.
+- Actions: approve/reject (owner), cancel (requester), complete (either). Completing marks listing(s) as `exchanged`.
+
+4) Message per exchange
+- Conversations list (`messages/conversations.html`) shows last message and unread counts.
+- Chat page (`messages/chat.html`) fetches messages, polls, and marks them read; sends new messages when status allows.
+
+5) Rate after completion
+- Participants of completed exchanges can rate each other once via `ratings/rate.html` → `submit_rating.php`.
+- Profile (`security/profile.php`) shows your ratings summary, recent messages, and request snippets.
+
+## API overview (selected)
 
 - Exchange
   - POST `backend/exchange/send_request.php` { listing_id, message? }
@@ -66,38 +85,52 @@ To use on a page, include a nav with `data-dyn-nav` and add the script:
   - POST `backend/messages/mark_read.php` { exchange_request_id }
   - GET  `backend/messages/list_conversations.php`
 - Ratings
-  - POST `backend/ratings/submit_rating.php` { request_id, rating 1..5, review? } – requires exchange status `completed`; only participants; prevents duplicates
+  - POST `backend/ratings/submit_rating.php` { request_id, rating 1..5, review? }
   - GET  `backend/ratings/get_user_ratings.php?user_id` (omit to use current user)
 
-All endpoints return JSON and require a logged-in session (`$_SESSION['user_id']`).
+All APIs return JSON and require a logged-in session (`$_SESSION['user_id']`).
 
-## Frontend pages
+## Frontend & navigation
 
-- Listings: `backend/list/index.php` (home), `add-book.html`, `book-details.php`, `request_exchange.html`
-- Requests: `backend/exchange/requests.html` – manage owner/requester views
-- Messages: `backend/messages/conversations.html`, `chat.html`
-- Ratings: `backend/ratings/rate.html` – submit a rating post-completion
-- Profile: `backend/security/profile.php` – shows messages preview, requests summaries, and ratings
+- Bootstrap 5 via CDN.
+- A shared dynamic navbar (`backend/assets/nav.js`) queries `backend/security/session_info.php` and renders:
+  - Logged-in: Home, My Profile, Messages, Exchange Requests, Add Book, Logout
+  - Guest: Home, Login, Register
+- Add a placeholder with `data-dyn-nav` and include `../assets/nav.js` on any page to enable it.
 
-## Notable behaviors and fixes
+## Known issues & quick fixes
 
-- Completion flow (`backend/exchange/update_request.php`):
-  - Marks requested listing as exchanged; also marks offered listing if present
-  - Archives into `exchange_requests_archive` only if that table exists (to avoid transaction failure)
-- Ratings submit (`backend/ratings/submit_rating.php`):
-  - Validates participants using `exchange_requests.owner_id` and `requester_id` directly (no listing join)
+1) Registration fields vs schema
+- `register.html` + `db-reg.php` submit `fname`/`lname`, but the schema uses `full_name` (no `first_name`/`last_name`).
+- Quick fix (code): change the INSERT to set `full_name = CONCAT(?, ' ', ?)` and remove `first_name`/`last_name` columns from the query, or extend the schema to include those columns.
 
-## Setup tips
+2) Exchange request uses book_id instead of listing_id
+- `book-details.php` links to `request_exchange.html?book_id=...`, but `send_request.php` expects `listing_id`.
+- Quick fix: pass `listing_id` from the details page (or load details by `listing_id`) and update `request_exchange.html` to read `listing_id`.
 
-- Ensure PHP sessions are working; login code must set `$_SESSION['user_id']` and optionally `$_SESSION['username']`.
-- If you need archiving, create `exchange_requests_archive` table; otherwise it’s skipped.
-- Update CORS or cookie settings only if hosting outside `localhost`.
+3) Potential XSS in chat rendering
+- `messages/chat.html` injects `message_content` via `innerHTML` without escaping.
+- Quick fix: render as text (e.g., set `textContent`) or escape HTML before insertion.
 
-## Development
+4) Admin nav “Messages”
+- Admin nav links to `/backend/admin/messages.php`, which is not present. Remove the link or add the page.
 
-- Static assets rely on Bootstrap 5 CDN.
-- Keep relative paths aligned: pages under `backend/*` include `../assets/nav.js`.
-- For new pages, add the `data-dyn-nav` container and include the nav script.
+5) MySQL JSON & port assumptions
+- `users.notification_preferences` is JSON (require MySQL 5.7+). If using older MySQL, change to TEXT.
+- `SQL_PORT` defaults to 3309; switch to 3306 if that’s your local port.
+
+## Troubleshooting
+
+- DB connection fails: verify `backend/_inc/config.php` has the right port/credentials; confirm MySQL is running.
+- Can’t log in as sample users: only the `admin` user has a known password (“password”). For other sample users, reset passwords in DB.
+- Requests don’t change listing status: ensure you follow state transitions (approve → complete) and that you’re acting as the correct role (owner vs requester).
+- Messages not appearing: confirm you’re a participant of the exchange; the API enforces this.
+
+## Development tips
+
+- Keep relative asset paths aligned (pages under `backend/*` typically use `../assets/nav.js`).
+- For new endpoints, reuse `require_login()` and `json_response()` from `_inc` utilities.
+- Admin-only pages should use `require_admin()` and `esc()` for output.
 
 ## License
 
