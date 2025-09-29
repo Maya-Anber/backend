@@ -98,40 +98,7 @@ All APIs return JSON and require a logged-in session (`$_SESSION['user_id']`).
   - Guest: Home, Login, Register
 - Add a placeholder with `data-dyn-nav` and include `../assets/nav.js` on any page to enable it.
 
-## Known issues & quick fixes
-
-1) Registration fields vs schema
-- `register.html` + `db-reg.php` submit `fname`/`lname`, but the schema uses `full_name` (no `first_name`/`last_name`).
-- Quick fix (code): change the INSERT to set `full_name = CONCAT(?, ' ', ?)` and remove `first_name`/`last_name` columns from the query, or extend the schema to include those columns.
-
-2) Exchange request uses book_id instead of listing_id
-- `book-details.php` links to `request_exchange.html?book_id=...`, but `send_request.php` expects `listing_id`.
-- Quick fix: pass `listing_id` from the details page (or load details by `listing_id`) and update `request_exchange.html` to read `listing_id`.
-
-3) Potential XSS in chat rendering
-- `messages/chat.html` injects `message_content` via `innerHTML` without escaping.
-- Quick fix: render as text (e.g., set `textContent`) or escape HTML before insertion.
-
-4) Admin nav “Messages”
-- Admin nav links to `/backend/admin/messages.php`, which is not present. Remove the link or add the page.
-
-5) MySQL JSON & port assumptions
-- `users.notification_preferences` is JSON (require MySQL 5.7+). If using older MySQL, change to TEXT.
-- `SQL_PORT` defaults to 3309; switch to 3306 if that’s your local port.
-
-## Troubleshooting
-
-- DB connection fails: verify `backend/_inc/config.php` has the right port/credentials; confirm MySQL is running.
-- Can’t log in as sample users: only the `admin` user has a known password (“password”). For other sample users, reset passwords in DB.
-- Requests don’t change listing status: ensure you follow state transitions (approve → complete) and that you’re acting as the correct role (owner vs requester).
-- Messages not appearing: confirm you’re a participant of the exchange; the API enforces this.
-
-## Development tips
-
-- Keep relative asset paths aligned (pages under `backend/*` typically use `../assets/nav.js`).
-- For new endpoints, reuse `require_login()` and `json_response()` from `_inc` utilities.
-- Admin-only pages should use `require_admin()` and `esc()` for output.
-
 ## License
 
-Internal/student project. No warranty.
+Internal/student project. 
+
